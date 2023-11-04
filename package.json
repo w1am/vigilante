@@ -1,0 +1,34 @@
+{
+  "name": "vigilante",
+  "version": "1.0.0",
+  "description": "",
+  "build": {
+    "appId": "your.app.id",
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "icon": "./icons"
+    }
+  },
+  "main": "main.js",
+  "scripts": {
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "start": "./node_modules/.bin/electron .",
+    "build:linux": "electron-packager . --platform=linux"
+  },
+  "keywords": [],
+  "author": "William Chong <admin@email.com> github.com",
+  "homepage": "github.com",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^27.0.3",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "electron-packager": "^17.1.2",
+    "jsmpeg": "^1.0.0",
+    "node-rtsp-stream": "^0.0.9"
+  }
+}
