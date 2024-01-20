@@ -3,19 +3,25 @@
   "version": "1.0.0",
   "description": "",
   "build": {
-    "appId": "your.app.id",
+    "appId": "com.vigilante",
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
     "linux": {
       "target": [
         "deb"
-      ],
-      "icon": "./icons"
+      ]
     }
   },
   "main": "main.js",
   "scripts": {
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "start": "./node_modules/.bin/electron .",
+    "start": "electron .",
+    "build": "run-s build:*",
+    "build:windows": "electron-builder --win",
     "build:linux": "electron-packager . --platform=linux"
   },
   "keywords": [],
@@ -28,6 +34,7 @@
   },
   "dependencies": {
     "electron-packager": "^17.1.2",
+    "js-yaml": "^4.1.0",
     "jsmpeg": "^1.0.0",
     "node-rtsp-stream": "^0.0.9"
   }

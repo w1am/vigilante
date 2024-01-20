@@ -1,12 +1,11 @@
 const Stream = require('node-rtsp-stream');
-const streams = [
-  {
-    name: '',
-    url: '',
-  },
-];
+const fs = require('fs');
+const yaml = require('js-yaml');
 
-streams.forEach((streamInfo, index) => {
+const path = './config.yml';
+const config = yaml.load(fs.readFileSync(path, 'utf8'));
+
+config.streams.forEach((streamInfo, index) => {
   new Stream({
     name: streamInfo.name,
     streamUrl: streamInfo.url,
