@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="color-scheme" content="dark">
+
+  <!-- Xel configuration -->
+  <meta name="xel-theme" content="node-modules://xel/themes/adwaita-dark.css">
+  <meta name="xel-icons" content="node-modules://xel/icons/material.svg">
+  <meta name="xel-accent-color" content="blue">
+  <script src="node-modules://xel/xel.js" type="module"></script>
+
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+
+<body>
+  <div class="grid" id="grid"></div>
+
+  <div class="modal-overlay" id="modal">
+    <x-card class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Configuration</h2>
+        <div class="modal-header-actions">
+          <x-button id="menu-button" size="small">
+            <x-label>⋮</x-label>
+          </x-button>
+          <x-button id="close-button" size="small">
+            <x-icon href="node-modules://xel/icons/material.svg#close"></x-icon>
+          </x-button>
+        </div>
+      </div>
+      <div id="configs"></div>
+      <div class="modal-footer">
+        <x-button id="save-button">
+          <x-label>Save</x-label>
+        </x-button>
+      </div>
+    </x-card>
+  </div>
+
+  <x-menu id="actions-menu">
+    <x-menuitem id="menu-add-stream">
+      <x-label>Add Stream</x-label>
+    </x-menuitem>
+    <x-menuitem id="menu-discover">
+      <x-label>Discover Streams</x-label>
+    </x-menuitem>
+    <hr>
+    <x-menuitem id="menu-import">
+      <x-label>Import Configuration</x-label>
+    </x-menuitem>
+    <x-menuitem id="menu-export">
+      <x-label>Export Configuration</x-label>
+    </x-menuitem>
+    <hr>
+    <x-menuitem id="menu-delete-all">
+      <x-label>Delete All Streams</x-label>
+    </x-menuitem>
+  </x-menu>
+
+  <div class="modal-overlay" id="discovery-modal">
+    <x-card class="modal discovery-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Discover Streams</h2>
+        <x-button id="discovery-close-button" size="small">
+          <x-icon href="node-modules://xel/icons/material.svg#close"></x-icon>
+        </x-button>
+      </div>
+      <div id="discovery-content">
+        <div id="discovery-progress" class="discovery-progress">
+          <x-throbber></x-throbber>
+          <p>Scanning network...</p>
+        </div>
+        <div id="discovery-results" style="display: none;">
+          <div class="discovery-settings">
+            <div class="form-row">
+              <div class="form-group">
+                <x-label>Camera Brand</x-label>
+                <x-select id="discovery-brand">
+                  <x-menu>
+                    <x-menuitem value="hikvision" selected><x-label>Hikvision (NVR)</x-label></x-menuitem>
+                    <x-menuitem value="dahua"><x-label>Dahua (NVR)</x-label></x-menuitem>
+                    <x-menuitem value="reolink"><x-label>Reolink</x-label></x-menuitem>
+                    <x-menuitem value="axis"><x-label>Axis</x-label></x-menuitem>
+                    <x-menuitem value="amcrest"><x-label>Amcrest</x-label></x-menuitem>
+                    <x-menuitem value="generic"><x-label>Generic RTSP</x-label></x-menuitem>
+                  </x-menu>
+                </x-select>
+              </div>
+              <div class="form-group small" id="discovery-channels-group">
+                <x-label>Channels</x-label>
+                <x-numberinput id="discovery-channels" value="4" min="1" max="64"></x-numberinput>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <x-label>Username</x-label>
+                <x-input id="discovery-username" value="admin"></x-input>
+              </div>
+              <div class="form-group">
+                <x-label>Password</x-label>
+                <x-input id="discovery-password" type="password"></x-input>
+              </div>
+              <div class="form-group small">
+                <x-label>Port</x-label>
+                <x-numberinput id="discovery-port" value="554" min="1" max="65535"></x-numberinput>
+              </div>
+            </div>
+          </div>
+          <x-label class="discovery-section-label">Discovered Devices</x-label>
+          <div class="discovery-list-container">
+            <div id="discovery-list"></div>
+          </div>
+        </div>
+        <div id="discovery-empty" class="discovery-empty" style="display: none;">
+          <p>No RTSP devices found on the network.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <x-button id="discovery-add-button" disabled>
+          <x-label>Add Selected</x-label>
+        </x-button>
+      </div>
+    </x-card>
+  </div>
+
+  <script src="assets/jsmpeg.min.js"></script>
+  <script type="module" src="renderer.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Compile SASS
+        run: bun run sass
+
+      - name: Build Electron app
+        run: bun run dist:${{ matrix.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.deb
+          retention-days: 30
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: release-*
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
