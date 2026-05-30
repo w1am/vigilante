@@ -17,6 +17,7 @@ use tokio::process::Command;
 use crate::stream_config::StreamConfiguration;
 
 const CHUNK_SIZE: usize = 32 * 1024;
+const SCALE_FILTER: &str = r"scale=min(854\,iw):-2";
 
 pub struct Relay {
     registry: Mutex<HashMap<usize, StreamConfiguration>>,
@@ -91,6 +92,8 @@ async fn relay_stream(mut socket: WebSocket, index: usize, relay: Arc<Relay>) {
             "tcp",
             "-i",
             stream.url.as_str(),
+            "-vf",
+            SCALE_FILTER,
             "-f",
             "mpegts",
             "-codec:v",
