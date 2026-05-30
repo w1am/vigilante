@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="color-scheme" content="dark">
+
+  <meta name="xel-theme" content="vendor/xel/themes/adwaita-dark.css">
+  <meta name="xel-icons" content="vendor/xel/icons/material.svg">
+  <meta name="xel-accent-color" content="blue">
+  <script src="vendor/xel/xel.js" type="module"></script>
+
+  <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+  <div class="grid" id="grid"></div>
+
+  <div class="modal-overlay" id="add-camera-modal">
+    <x-card class="modal add-camera-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Add a Camera</h2>
+        <x-button id="add-camera-close" size="small">
+          <x-icon href="vendor/xel/icons/material.svg#close"></x-icon>
+        </x-button>
+      </div>
+
+      <p class="modal-help">Fill in your camera details and we'll set up the connection for you.</p>
+
+      <div class="form-group">
+        <x-label>Camera Name</x-label>
+        <x-input id="ac-name" placeholder="e.g. Front Door"></x-input>
+      </div>
+
+      <div class="form-group">
+        <x-label>Camera Type</x-label>
+        <x-select id="ac-brand">
+          <x-menu>
+            <x-menuitem value="hikvision" selected><x-label>Hikvision (NVR)</x-label></x-menuitem>
+            <x-menuitem value="dahua"><x-label>Dahua (NVR)</x-label></x-menuitem>
+            <x-menuitem value="reolink"><x-label>Reolink</x-label></x-menuitem>
+            <x-menuitem value="axis"><x-label>Axis</x-label></x-menuitem>
+            <x-menuitem value="amcrest"><x-label>Amcrest</x-label></x-menuitem>
+            <x-menuitem value="generic"><x-label>Other / Generic</x-label></x-menuitem>
+            <x-menuitem value="manual"><x-label>I already have a link (advanced)</x-label></x-menuitem>
+          </x-menu>
+        </x-select>
+      </div>
+
+      <div id="ac-guided">
+        <div class="form-row">
+          <div class="form-group">
+            <x-label>Camera IP Address</x-label>
+            <x-input id="ac-ip" placeholder="192.168.1.100"></x-input>
+          </div>
+          <div class="form-group small" id="ac-channel-group">
+            <x-label>Channel</x-label>
+            <x-numberinput id="ac-channel" value="1" min="1" max="64"></x-numberinput>
+          </div>
+          <div class="form-group small">
+            <x-label>Port</x-label>
+            <x-numberinput id="ac-port" value="554" min="1" max="65535"></x-numberinput>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <x-label>Username</x-label>
+            <x-input id="ac-username" value="admin"></x-input>
+          </div>
+          <div class="form-group">
+            <x-label>Password</x-label>
+            <x-input id="ac-password" type="password"></x-input>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" id="ac-manual-group" style="display: none;">
+        <x-label>Camera Link</x-label>
+        <x-input id="ac-url" placeholder="rtsp://user:pass@192.168.1.100:554/stream"></x-input>
+      </div>
+
+      <div class="ac-preview">
+        <span class="ac-preview-label">Connection preview</span>
+        <code id="ac-preview-url">—</code>
+      </div>
+
+      <div class="modal-footer">
+        <x-button id="add-camera-cancel" size="large">
+          <x-label>Cancel</x-label>
+        </x-button>
+        <x-button id="add-camera-confirm" size="large" skin="accent">
+          <x-icon href="vendor/xel/icons/material.svg#check"></x-icon>
+          <x-label>Add Camera</x-label>
+        </x-button>
+      </div>
+    </x-card>
+  </div>
+
+  <div class="modal-overlay" id="modal">
+    <x-card class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Manage Cameras</h2>
+        <div class="modal-header-actions">
+          <x-button id="menu-button" size="small">
+            <x-label>⋮</x-label>
+          </x-button>
+          <x-button id="close-button" size="small">
+            <x-icon href="vendor/xel/icons/material.svg#close"></x-icon>
+          </x-button>
+        </div>
+      </div>
+      <div id="configs"></div>
+      <div class="modal-footer">
+        <x-button id="save-button" size="large" skin="accent">
+          <x-icon href="vendor/xel/icons/material.svg#check"></x-icon>
+          <x-label>Save Changes</x-label>
+        </x-button>
+      </div>
+    </x-card>
+  </div>
+
+  <x-menu id="actions-menu">
+    <x-menuitem id="menu-add-stream">
+      <x-label>Add Camera</x-label>
+    </x-menuitem>
+    <x-menuitem id="menu-discover">
+      <x-label>Find Cameras</x-label>
+    </x-menuitem>
+    <hr>
+    <x-menuitem id="menu-import">
+      <x-label>Import Setup</x-label>
+    </x-menuitem>
+    <x-menuitem id="menu-export">
+      <x-label>Export Setup</x-label>
+    </x-menuitem>
+    <hr>
+    <x-menuitem id="menu-delete-all">
+      <x-label>Remove All Cameras</x-label>
+    </x-menuitem>
+  </x-menu>
+
+  <div class="modal-overlay" id="discovery-modal">
+    <x-card class="modal discovery-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Find Cameras</h2>
+        <x-button id="discovery-close-button" size="small">
+          <x-icon href="vendor/xel/icons/material.svg#close"></x-icon>
+        </x-button>
+      </div>
+      <div id="discovery-content">
+        <div id="discovery-progress" class="discovery-progress">
+          <x-throbber></x-throbber>
+          <p>Scanning your network for cameras…</p>
+        </div>
+        <div id="discovery-results" style="display: none;">
+          <div class="discovery-settings">
+            <div class="form-row">
+              <div class="form-group">
+                <x-label>Camera Type</x-label>
+                <x-select id="discovery-brand">
+                  <x-menu>
+                    <x-menuitem value="hikvision" selected><x-label>Hikvision (NVR)</x-label></x-menuitem>
+                    <x-menuitem value="dahua"><x-label>Dahua (NVR)</x-label></x-menuitem>
+                    <x-menuitem value="reolink"><x-label>Reolink</x-label></x-menuitem>
+                    <x-menuitem value="axis"><x-label>Axis</x-label></x-menuitem>
+                    <x-menuitem value="amcrest"><x-label>Amcrest</x-label></x-menuitem>
+                    <x-menuitem value="generic"><x-label>Other / Generic</x-label></x-menuitem>
+                  </x-menu>
+                </x-select>
+              </div>
+              <div class="form-group small" id="discovery-channels-group">
+                <x-label>Channels</x-label>
+                <x-numberinput id="discovery-channels" value="4" min="1" max="64"></x-numberinput>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <x-label>Username</x-label>
+                <x-input id="discovery-username" value="admin"></x-input>
+              </div>
+              <div class="form-group">
+                <x-label>Password</x-label>
+                <x-input id="discovery-password" type="password"></x-input>
+              </div>
+              <div class="form-group small">
+                <x-label>Port</x-label>
+                <x-numberinput id="discovery-port" value="554" min="1" max="65535"></x-numberinput>
+              </div>
+            </div>
+          </div>
+          <x-label class="discovery-section-label">Cameras Found</x-label>
+          <div class="discovery-list-container">
+            <div id="discovery-list"></div>
+          </div>
+        </div>
+        <div id="discovery-empty" class="discovery-empty" style="display: none;">
+          <p>No cameras were found on your network.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <x-button id="discovery-add-button" size="large" skin="accent" disabled>
+          <x-label>Add Selected Cameras</x-label>
+        </x-button>
+      </div>
+    </x-card>
+  </div>
+
+  <script src="jsmpeg.min.js"></script>
+  <script src="ipc.js"></script>
+  <script type="module" src="renderer.js"></script>
+</body>
+
+</html>

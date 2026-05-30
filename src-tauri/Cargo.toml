@@ -1,0 +1,31 @@
+[package]
+name = "vigilante"
+version = "0.1.0"
+description = "RTSP stream viewer"
+authors = ["William Chong <admin@email.com>"]
+license = "ISC"
+repository = "https://github.com/w1am/vigilante"
+edition = "2021"
+rust-version = "1.77.2"
+
+# The library crate holds all logic; main.rs is a thin entry point.
+# The cdylib/staticlib outputs let the same code target mobile platforms.
+[lib]
+name = "vigilante_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "process", "io-util", "time", "sync", "macros"] }
+axum = { version = "0.7", features = ["ws"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[features]
+# This feature is used for production builds where `devUrl` is unset.
+custom-protocol = ["tauri/custom-protocol"]

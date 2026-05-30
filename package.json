@@ -1,0 +1,31 @@
+{
+  "name": "vigilante-tauri",
+  "version": "0.1.0",
+  "description": "RTSP stream viewer (Tauri 2)",
+  "type": "module",
+  "author": "William Chong <admin@email.com>",
+  "homepage": "https://github.com/w1am/vigilante",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/w1am/vigilante.git"
+  },
+  "license": "ISC",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "sass": "sass src/main.sass src/main.css",
+    "sass:watch": "sass --watch src/main.sass src/main.css",
+    "build:frontend": "npm run vendor && npm run sass",
+    "bump": "node scripts/bump-version.mjs",
+    "postinstall": "npm run vendor",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "sass": "^1.97.3"
+  },
+  "dependencies": {
+    "xel": "^0.39.7"
+  }
+}
