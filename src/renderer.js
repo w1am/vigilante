@@ -49,9 +49,12 @@ function disposePlayer(index) {
   streamStatus.delete(index);
 }
 
+const LIVE_EDGE_DRIFT = 4;
+const BUFFER_KEEP = 12;
+
 function initializePlayer(index) {
-  const canvas = document.querySelectorAll('.video-canvas')[index];
-  if (!canvas) return;
+  const video = document.querySelectorAll('.video-tile')[index];
+  if (!video) return;
 
   disposePlayer(index);
 
@@ -65,17 +68,116 @@ function initializePlayer(index) {
   streamStatus.set(index, { start: Date.now(), lastFrame: 0, frameSeen: false });
 
   const url = `ws://localhost:${relayServerPort}/api/stream/${index}`;
-  streamPlayers.set(index, new JSMpeg.Player(url, {
-    canvas,
-    onVideoDecode: () => {
-      const status = streamStatus.get(index);
-      if (status) {
-        status.frameSeen = true;
-        status.lastFrame = Date.now();
+  streamPlayers.set(index, createMsePlayer(index, video, url));
+}
+
+function createMsePlayer(index, video, url) {
+  const mediaSource = new MediaSource();
+  const objectUrl = URL.createObjectURL(mediaSource);
+  const queue = [];
+  let sourceBuffer = null;
+  let pendingMime = null;
+  let isOpen = false;
+  let destroyed = false;
+  let reconnectTimer = null;
+
+  const player = { destroy };
+  video.muted = true;
+  video.autoplay = true;
+  video.src = objectUrl;
+
+  const ws = new WebSocket(url);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onmessage = (event) => {
+    if (typeof event.data === 'string') {
+      pendingMime = `video/mp4; codecs="${event.data}"`;
+      if (!MediaSource.isTypeSupported(pendingMime)) {
+        setTileStatus(index, 'offline', 'Unsupported video', event.data);
+        return destroy();
       }
-      setTileStatus(index, 'live');
+      attachSourceBuffer();
+      return;
     }
-  }));
+    queue.push(new Uint8Array(event.data));
+    flush();
+  };
+
+  ws.onclose = () => {
+    if (destroyed) return;
+    setTileStatus(index, 'connecting', 'Reconnecting…');
+    reconnectTimer = setTimeout(() => {
+      if (!destroyed && streamPlayers.get(index) === player) initializePlayer(index);
+    }, 3000);
+  };
+
+  mediaSource.addEventListener('sourceopen', () => {
+    URL.revokeObjectURL(objectUrl);
+    isOpen = true;
+    attachSourceBuffer();
+  });
+
+  function onTimeUpdate() {
+    const status = streamStatus.get(index);
+    if (status) {
+      status.frameSeen = true;
+      status.lastFrame = Date.now();
+    }
+    setTileStatus(index, 'live');
+  }
+  video.addEventListener('timeupdate', onTimeUpdate);
+
+  function attachSourceBuffer() {
+    if (sourceBuffer || !isOpen || !pendingMime) return;
+    sourceBuffer = mediaSource.addSourceBuffer(pendingMime);
+    sourceBuffer.mode = 'sequence';
+    sourceBuffer.addEventListener('updateend', onUpdateEnd);
+    video.play().catch(() => {});
+    flush();
+  }
+
+  function flush() {
+    if (destroyed || !sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
+    try {
+      sourceBuffer.appendBuffer(queue.shift());
+    } catch (error) {
+      if (error.name === 'QuotaExceededError') evictTo(video.currentTime - 1);
+    }
+  }
+
+  function onUpdateEnd() {
+    if (destroyed || !sourceBuffer || !sourceBuffer.buffered.length) return flush();
+
+    const liveEdge = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1);
+    if (liveEdge - video.currentTime > LIVE_EDGE_DRIFT) {
+      video.currentTime = liveEdge - 0.5;
+    }
+
+    const start = sourceBuffer.buffered.start(0);
+    const pruneTo = video.currentTime - 2;
+    if (!sourceBuffer.updating && liveEdge - start > BUFFER_KEEP && pruneTo > start) {
+      return evictTo(pruneTo);
+    }
+    flush();
+  }
+
+  function evictTo(end) {
+    if (!sourceBuffer || sourceBuffer.updating) return;
+    const start = sourceBuffer.buffered.start(0);
+    if (end > start) sourceBuffer.remove(start, end);
+  }
+
+  function destroy() {
+    destroyed = true;
+    clearTimeout(reconnectTimer);
+    video.removeEventListener('timeupdate', onTimeUpdate);
+    try { ws.close(); } catch (e) {}
+    try { if (mediaSource.readyState === 'open') mediaSource.endOfStream(); } catch (e) {}
+    try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  return player;
 }
 
 function startStatusWatchdog() {
@@ -151,7 +253,7 @@ function renderGrid() {
         <span class="tile-status-text">Connecting…</span>
         <span class="tile-status-sub"></span>
       </div>
-      <canvas class="video-canvas"></canvas>
+      <video class="video-tile" muted playsinline></video>
     </div>
   `).join('');
 }

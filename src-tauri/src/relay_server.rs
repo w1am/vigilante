@@ -17,7 +17,7 @@ use tokio::process::Command;
 use crate::stream_config::StreamConfiguration;
 
 const CHUNK_SIZE: usize = 32 * 1024;
-const SCALE_FILTER: &str = r"scale=min(854\,iw):-2";
+const MAX_INIT_SCAN: usize = 256 * 1024;
 
 pub struct Relay {
     registry: Mutex<HashMap<usize, StreamConfiguration>>,
@@ -88,23 +88,19 @@ async fn relay_stream(mut socket: WebSocket, index: usize, relay: Arc<Relay>) {
             "-hide_banner",
             "-loglevel",
             "error",
+            "-fflags",
+            "+genpts",
             "-rtsp_transport",
             "tcp",
             "-i",
             stream.url.as_str(),
-            "-vf",
-            SCALE_FILTER,
-            "-f",
-            "mpegts",
-            "-codec:v",
-            "mpeg1video",
-            "-r",
-            "30",
-            "-b:v",
-            "1000k",
-            "-bf",
-            "0",
             "-an",
+            "-c:v",
+            "copy",
+            "-f",
+            "mp4",
+            "-movflags",
+            "+frag_keyframe+empty_moov+default_base_moof",
             "pipe:1",
         ])
         .stdout(std::process::Stdio::piped())
@@ -122,6 +118,8 @@ async fn relay_stream(mut socket: WebSocket, index: usize, relay: Arc<Relay>) {
 
     let mut stdout = child.stdout.take().expect("stdout was piped");
     let mut buffer = vec![0u8; CHUNK_SIZE];
+    let mut init = Vec::new();
+    let mut codec_sent = false;
 
     loop {
         tokio::select! {
@@ -129,8 +127,24 @@ async fn relay_stream(mut socket: WebSocket, index: usize, relay: Arc<Relay>) {
                 match read {
                     Ok(0) => break,
                     Ok(n) => {
-                        if socket.send(Message::Binary(buffer[..n].to_vec())).await.is_err() {
-                            break;
+                        if codec_sent {
+                            if socket.send(Message::Binary(buffer[..n].to_vec())).await.is_err() {
+                                break;
+                            }
+                        } else {
+                            init.extend_from_slice(&buffer[..n]);
+                            if let Some(codec) = find_avc_codec(&init) {
+                                if socket.send(Message::Text(codec)).await.is_err() {
+                                    break;
+                                }
+                                if socket.send(Message::Binary(std::mem::take(&mut init))).await.is_err() {
+                                    break;
+                                }
+                                codec_sent = true;
+                            } else if init.len() > MAX_INIT_SCAN {
+                                eprintln!("Could not detect H.264 codec for stream {index}");
+                                break;
+                            }
                         }
                     }
                     Err(error) => {
@@ -149,4 +163,11 @@ async fn relay_stream(mut socket: WebSocket, index: usize, relay: Arc<Relay>) {
 
     let _ = child.kill().await;
     println!("Client disconnected from stream {index}");
+}
+
+fn find_avc_codec(buffer: &[u8]) -> Option<String> {
+    let marker = buffer.windows(4).position(|window| window == b"avcC")?;
+    let [_version, profile, compatibility, level] =
+        buffer.get(marker + 4..marker + 8)?.try_into().ok()?;
+    Some(format!("avc1.{profile:02x}{compatibility:02x}{level:02x}"))
 }

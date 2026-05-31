@@ -25,6 +25,10 @@ pub fn run() {
     {
         std::env::set_var("GTK_A11Y", "none");
         std::env::set_var("NO_AT_BRIDGE", "1");
+        std::env::set_var(
+            "GST_PLUGIN_FEATURE_RANK",
+            "vah264dec:MAX,nvh264dec:MAX,vaapih264dec:MAX",
+        );
     }
 
     tauri::Builder::default()

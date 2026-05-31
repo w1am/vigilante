@@ -1,6 +1,6 @@
 {
   "name": "vigilante-tauri",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "RTSP stream viewer (Tauri 2)",
   "type": "module",
   "author": "William Chong <admin@email.com>",
